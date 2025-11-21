@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>温馨提示</title>
+    <style>
+        /* 弹窗样式：优化定位基准，确保不偏移 */
+        .tip-window {
+            position: fixed;
+            width: 250px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-family: "Microsoft YaHei", "Heiti TC", Arial, sans-serif;
+            color: #000;
+            z-index: 9999;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: scale(0.8);
+            opacity: 0;
+            left: 0; /* 初始值，后续JS强制覆盖 */
+            top: 0;  /* 初始值，后续JS强制覆盖 */
+        }
+        .tip-window.active {
+            transform: scale(1);
+            opacity: 1;
+        }
+        /* 重置页面样式，消除所有干扰 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body, html {
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: relative; /* 给fixed定位提供参考基准 */
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // 全局配置：稍微放慢弹窗速度，避免视觉重叠
+        const MAX_WINDOWS = 100;
+        const WINDOW_DURATION = 5000;
+        const POP_DELAY = 20; // 从5ms改为20ms，确保每个弹窗位置都能正确计算
+
+        // 温馨提示语（不变）
+        const tips = [
+            '多喝水哦~', '记得吃早餐呀', '午休10分钟会更有精神',
+            '久坐了，起来活动一下吧', '晚上早点放下手机呀', '天冷记得添衣',
+            '天热别贪凉，小心感冒', '睡前泡个脚超舒服的', '今天也要好好吃饭',
+            '累了就歇一歇，别硬撑', '保持微笑呀', '每天都要元气满满',
+            '你真的很棒呀', '别焦虑，一切都会慢慢变好', '烦恼都是暂时的',
+            '你值得被温柔对待', '不开心就吃点甜的吧', '给自己一点耐心呀',
+            '记得吃水果补充维生素', '出门带把伞，以防下雨', '桌面整洁一点，心情也会变好',
+            '愿你今天有甜甜的小确幸', '期待好事发生在你身上', '平安喜乐，不止今天'
+        ];
+
+        // 背景颜色（不变）
+        const bgColors = [
+            'lightpink', 'skyblue', 'lightgreen', 'lavender', 'lightyellow',
+            'plum', 'coral', 'bisque', 'aquamarine', 'mistyrose'
+        ];
+
+        const allWindows = [];
+        let isStopped = false;
+
+        // 终极修复：兼容所有浏览器的随机位置计算
+        function createTipWindow() {
+            if (isStopped) return;
+
+            const window = document.createElement('div');
+            window.className = 'tip-window';
+
+            // 随机选择提示语和背景色
+            const randomTip = tips[Math.floor(Math.random() * tips.length)];
+            const randomBg = bgColors[Math.floor(Math.random() * bgColors.length)];
+            window.textContent = randomTip;
+            window.style.backgroundColor = randomBg;
+
+            // 关键修复：用两种方式获取可视区域，确保兼容所有浏览器
+            const viewportWidth = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+            const viewportHeight = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
+            const windowWidth = 250;
+            const windowHeight = 60;
+
+            // 强制计算随机坐标：确保范围正确（0 到 可视区域-弹窗尺寸）
+            const x = Math.floor(Math.random() * (viewportWidth - windowWidth));
+            const y = Math.floor(Math.random() * (viewportHeight - windowHeight));
+
+            // 强制设置位置（用pixel单位，避免浏览器解析差异）
+            window.style.left = `${x}px`;
+            window.style.top = `${y}px`;
+            // 额外保险：设置right和bottom为auto，避免冲突
+            window.style.right = 'auto';
+            window.style.bottom = 'auto';
+
+            // 添加到页面并触发动画
+            document.body.appendChild(window);
+            // 延迟触发动画，确保位置已生效
+            setTimeout(() => window.classList.add('active'), 30);
+            allWindows.push(window);
+
+            // 自动关闭
+            setTimeout(() => {
+                if (window.parentNode) {
+                    window.style.opacity = '0';
+                    window.style.transform = 'scale(0.8)';
+                    setTimeout(() => window.remove(), 300);
+                }
+            }, WINDOW_DURATION);
+        }
+
+        // 批量创建弹窗：异步控制，避免阻塞
+        async function createBatchWindows() {
+            for (let i = 0; i < MAX_WINDOWS; i++) {
+                if (isStopped) break;
+                // 每次创建前先等待，确保上一个弹窗位置计算完成
+                await new Promise(resolve => setTimeout(resolve, POP_DELAY));
+                createTipWindow();
+            }
+        }
+
+        // 键盘监听关闭（不变）
+        document.addEventListener('keydown', (e) => {
+            if (e.key.toLowerCase() === 's' && !isStopped) {
+                isStopped = true;
+                console.log("已触发暂停，正在关闭所有窗口...");
+                
+                allWindows.forEach(window => {
+                    if (window.parentNode) {
+                        window.style.opacity = '0';
+                        window.style.transform = 'scale(0.8)';
+                        setTimeout(() => window.remove(), 300);
+                    }
+                });
+                allWindows.length = 0;
+
+                setTimeout(() => {
+                    alert("所有窗口已关闭，程序结束");
+                }, 500);
+            }
+        });
+
+        // 启动程序：确保页面加载完成后再运行
+        window.addEventListener('load', createBatchWindows);
+    </script>
+</body>
+</html>
